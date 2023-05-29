@@ -1,28 +1,33 @@
 #include "../../include/libs.h"
 
-#define VEC_LIMIT 1000000000
+void escape(void *p) {
+    asm volatile("" : : "g"(p) : "memory");
+}
 
 int main(int argc, char *argv[]) {
-    struct timeval calc;
-    double calcTime;
-    double gflops;
-    float mem_bw;
-    float randAlpha;
-    float *X;
-    int vec_size = 5000;
     srand((unsigned) time(NULL));
+    float alpha;
+    float *X;
+    int vec_size = VEC_START;
     while (vec_size > 0 && vec_size < VEC_LIMIT) {
-        X = (float *) malloc(vec_size * sizeof(float));
-        gflops = 1.0 * vec_size * 1e-09;
-        randAlpha = (float) rand() / RAND_MAX;
-        RandomVector(vec_size, X);
+        alpha = (float) rand() / RAND_MAX;
+        RANDOM_VEC(X, vec_size, float);
         // ****
-        tick(&calc);
-        cblas_sscal(vec_size, randAlpha, X, 1);
-        calcTime = tock(&calc);
+#pragma code_align 32
+        for (int i = 0; i < vec_size; i++) {
+            float temp = X[i];
+            escape(&temp);
+        }
+        CALCTIME(cblas_sscal, vec_size, alpha, X, 1);
         // ****
-        mem_bw = 4.0 * vec_size * 1e-09 / calcTime;
+//        for (int i = 0; i < vec_size; i++) {
+//            escape((float *) bliX.buffer + i);
+//        }
+//        BLISTIME(bli_scalv, &bliAlpha, &bliX);
+        // ****
         vec_size *= 2;
+        printf("done\n");
         free(X);
     }
+    return 0;
 }
